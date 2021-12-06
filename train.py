@@ -44,7 +44,8 @@ def train_model(model, criterion, optimizer, dataloaders, scheduler,
                 running_loss += loss.data[0]
                 # backward + optimize only if in training phase
                 if phase == 'train':
-                    loss.backward()
+                    #loss.backward()
+                    loss.sum().backward()
                     optimizer.step()
                 # statistics
                 preds = (outputs.data > 0.5).type(torch.cuda.FloatTensor)

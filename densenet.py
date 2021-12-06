@@ -124,5 +124,5 @@ class DenseNet(nn.Module):
         out = F.relu(features, inplace=True)
         out = F.avg_pool2d(out, kernel_size=7, stride=1).view(features.size(0), -1)
         # out = F.relu(self.classifier(out))
-        out = F.sigmoid(self.fc(out))
+        out = torch.sigmoid(self.fc(out))
         return out
