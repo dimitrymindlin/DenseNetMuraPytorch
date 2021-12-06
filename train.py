@@ -5,6 +5,8 @@ from torchnet import meter
 from torch.autograd import Variable
 from utils import plot_training
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 data_cat = ['train', 'valid'] # data categories
 
 def train_model(model, criterion, optimizer, dataloaders, scheduler, 
@@ -23,7 +25,7 @@ def train_model(model, criterion, optimizer, dataloaders, scheduler,
         print('-' * 10)
         # Each epoch has a training and validation phase
         for phase in data_cat:
-            model.train(phase=='train')
+            model.train(phase == 'train')
             running_loss = 0.0
             running_corrects = 0
             # Iterate over data.
@@ -33,8 +35,8 @@ def train_model(model, criterion, optimizer, dataloaders, scheduler,
                 inputs = data['images'][0]
                 labels = data['label'].type(torch.FloatTensor)
                 # wrap them in Variable
-                inputs = Variable(inputs.cuda())
-                labels = Variable(labels.cuda())
+                inputs = Variable(inputs.to(device))
+                labels = Variable(labels.to(device))
                 # zero the parameter gradients
                 optimizer.zero_grad()
                 # forward
@@ -48,7 +50,10 @@ def train_model(model, criterion, optimizer, dataloaders, scheduler,
                     loss.sum().backward()
                     optimizer.step()
                 # statistics
-                preds = (outputs.data > 0.5).type(torch.cuda.FloatTensor)
+                if device.type =="cpu":
+                    preds = (outputs.data > 0.5).type(torch.FloatTensor)
+                else:
+                    preds = (outputs.data > 0.5).type(torch.cuda.FloatTensor)
                 running_corrects += torch.sum(preds == labels.data)
                 confusion_matrix[phase].add(preds, labels.data)
             epoch_loss = running_loss / dataset_sizes[phase]
@@ -88,18 +93,24 @@ def get_metrics(model, criterion, dataloaders, dataset_sizes, phase='valid'):
     running_corrects = 0
     for i, data in enumerate(dataloaders[phase]):
         print(i, end='\r')
-        labels = data['label'].type(torch.FloatTensor)
+        if device.type == "cpu":
+            labels = data['label'].type(torch.FloatTensor)
+        else:
+            labels = data['label'].type(torch.cuda.FloatTensor)
         inputs = data['images'][0]
         # wrap them in Variable
-        inputs = Variable(inputs.cuda())
-        labels = Variable(labels.cuda())
+        inputs = Variable(inputs.to(device))
+        labels = Variable(labels.to(device))
         # forward
         outputs = model(inputs)
         outputs = torch.mean(outputs)
         loss = criterion(outputs, labels, phase)
         # statistics
         running_loss += loss.data[0] * inputs.size(0)
-        preds = (outputs.data > 0.5).type(torch.cuda.FloatTensor)
+        if device.type == "cpu":
+            preds = (outputs.data > 0.5).type(torch.FloatTensor)
+        else:
+            preds = (outputs.data > 0.5).type(torch.duca.FloatTensor)
         running_corrects += torch.sum(preds == labels.data)
         confusion_matrix.add(preds, labels.data)
 

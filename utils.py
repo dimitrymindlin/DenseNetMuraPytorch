@@ -31,7 +31,8 @@ def plot_training(costs, accs):
 
 def n_p(x):
     '''convert numpy float to Variable tensor float'''    
-    return Variable(torch.cuda.FloatTensor([x]), requires_grad=False)
+    return Variable(torch.FloatTensor([x]), requires_grad=False)
+#TODO Variable(torch.cuda.FloatTensor([x]), requires_grad=False)
 
 def get_count(df, cat):
     '''
