@@ -3,6 +3,8 @@ import copy
 import torch
 from torchnet import meter
 from torch.autograd import Variable
+
+from configs.mura_config import mura_config
 from utils import plot_training
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -10,7 +12,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 data_cat = ['train', 'valid'] # data categories
 
 def train_model(model, criterion, optimizer, dataloaders, scheduler, 
-                dataset_sizes, num_epochs):
+                dataset_sizes, num_epochs, tensorboard_writer=None):
+    tensorboard_writer.add_text("config", mura_config.__str__())
     since = time.time()
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -30,6 +33,8 @@ def train_model(model, criterion, optimizer, dataloaders, scheduler,
             running_corrects = 0
             # Iterate over data.
             for i, data in enumerate(dataloaders[phase]):
+                if i > 100:
+                    break
                 # get the inputs
                 print(i, end='\r')
                 inputs = data['images'][0]
@@ -51,13 +56,15 @@ def train_model(model, criterion, optimizer, dataloaders, scheduler,
                     optimizer.step()
                 # statistics
                 if device.type =="cpu":
-                    preds = (outputs.data > 0.5).type(torch.FloatTensor)
+                    preds = torch.FloatTensor([(outputs.data > 0.5).item()])
                 else:
                     preds = (outputs.data > 0.5).type(torch.cuda.FloatTensor)
                 running_corrects += torch.sum(preds == labels.data)
-                confusion_matrix[phase].add(preds, labels.data)
+                #confusion_matrix[phase].add(preds, labels.data)
+                confusion_matrix[phase].add(preds.data, labels.data)
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects / dataset_sizes[phase]
+
             costs[phase].append(epoch_loss)
             accs[phase].append(epoch_acc)
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
@@ -73,6 +80,10 @@ def train_model(model, criterion, optimizer, dataloaders, scheduler,
         print('Time elapsed: {:.0f}m {:.0f}s'.format(
                 time_elapsed // 60, time_elapsed % 60))
         print()
+        # Tensorboard
+        tensorboard_writer.add_scalar(f'{phase} loss', epoch_loss, epoch)
+        tensorboard_writer.add_scalar(f'{phase} accuracy', epoch_acc, epoch)
+    # Training done
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
@@ -108,10 +119,11 @@ def get_metrics(model, criterion, dataloaders, dataset_sizes, phase='valid'):
         # statistics
         running_loss += loss.data[0] * inputs.size(0)
         if device.type == "cpu":
-            preds = (outputs.data > 0.5).type(torch.FloatTensor)
+            #preds = (outputs.data > 0.5).type(torch.FloatTensor)
+            preds = torch.FloatTensor([(outputs.data > 0.5).item()])
         else:
-            preds = (outputs.data > 0.5).type(torch.duca.FloatTensor)
-        running_corrects += torch.sum(preds == labels.data)
+            preds = (outputs.data > 0.5).type(torch.cuda.FloatTensor)
+        running_corrects += torch.sum(preds.data == labels.data)
         confusion_matrix.add(preds, labels.data)
 
     loss = running_loss / dataset_sizes[phase]
