@@ -12,7 +12,7 @@ from datetime import datetime
 def run(device, writer):
     torch.multiprocessing.freeze_support()
     study_data = get_study_level_data(mura_config["data"]["study_types"])
-
+    # test
     # #### Create dataloaders pipeline
     data_cat = ['train', 'valid']  # data categories
     dataloaders = get_dataloaders(study_data, batch_size=mura_config["train"]["batch_size"])
